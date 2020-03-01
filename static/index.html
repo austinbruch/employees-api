@@ -1,8 +1,45 @@
 <html>
     <head>
-        <script type="text/javascript" src="js/app.js" async></script>
+        <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     </head>
     <body>
-        <h1>Test</h1>
+        <h1>Employees API Testing UI</h1>
+        <main>
+            <section>
+                <h2>Current employees</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>First name</th>
+                            <th>Last name</th>
+                            <th>Role</th>
+                            <th>Hire date</th>
+                            <th>Delete</th>
+                        </tr>
+                    </thead>
+                    <tbody id="employeesTable">
+                    </tbody>
+                </table>
+            </section>
+            <section>
+                <h2>Add a new employee</h2>
+                <form>
+                    <label for="firstName">First name</label>
+                    <input type="text" id="firstName" required>
+                    <label for="lastName">Last name</label>
+                    <input type="text" id="lastName" required>
+                    <label for="hireDate">Hire date</label>
+                    <input type="date" id="hireDate" required>
+                    <select id="role">
+                        <option>CEO</option>
+                        <option>VP</option>
+                        <option>MANAGER</option>
+                        <option>LACKEY</option>
+                    </select>
+                    <button id="addNewEmployee" type="button">Add!</button>
+                </form>
+            </section>
+        </main>
+        <script type="text/javascript" src="js/app.js"></script>
     </body>
 </html>
