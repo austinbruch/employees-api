@@ -42,6 +42,7 @@ const getEmployees = () => {
                         console.log(response);
                     });
                 });
+                newTableCell.appendChild(deleteButton);
                 newTableRow.appendChild(newTableCell);
                 employeesTbody.appendChild(newTableRow);
             });
@@ -94,3 +95,5 @@ addButton.addEventListener('click', (event) => {
         console.log(err);
     })
 });
+
+getEmployees();
