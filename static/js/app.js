@@ -40,6 +40,10 @@ const getEmployees = () => {
                     deleteEmployee(emp._id)
                     .then((response) => {
                         console.log(response);
+                        if (response.status === 204) {
+                            // successful delete, reload the table in the UI
+                            getEmployees();
+                        }
                     });
                 });
                 newTableCell.appendChild(deleteButton);

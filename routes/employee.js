@@ -79,6 +79,17 @@ router.post('', (req, res) => {
   res.sendStatus(201);
 });
 
+// DELETE /api/employees/:id route
+// Deletes the requested employee and returns 204 No Content
+// Even if the requested employee doesn't exist, a 204 is sent. I could probably be convinced to do a 404 in that case instead.
+router.delete('/:id', (req, res) => {
+  const id = req.params.id;
+  if (DATABASE.hasOwnProperty(id)){
+    delete DATABASE[id];
+  }
+  res.sendStatus(204);
+});
+
 /**
  * Validates the specified field in the given object, with configurable options.
  * @param {*} obj The object that contains the field/property to be validated
