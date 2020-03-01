@@ -22,6 +22,26 @@ router.get('', function(req, res) {
   })));
 });
 
+/**
+ * GET individual employee resource
+ */
+router.get('/:id', (req, res) => {
+  const id = req.params.id;
+  if (DATABASE.hasOwnProperty(id)) {
+    return res.status(200).send({
+      ...DATABASE[id],
+      _id: id
+    });
+  } else {
+    return res.status(404).send({
+      result: `Resource with id [${id}] not found.`
+    });
+  }
+});
+
+/**
+ * POST new employee resource
+ */
 router.post('', (req, res) => {
   const newEmp = req.body;
 
@@ -74,14 +94,15 @@ router.post('', (req, res) => {
     role: newEmp.role
   };
   // TODO still need to add the 2 externally-populated fields
-  // while (!DATABASE.hasOwnProperty(newId)) {
-  // }
   res.sendStatus(201);
 });
 
-// DELETE /api/employees/:id route
-// Deletes the requested employee and returns 204 No Content
-// Even if the requested employee doesn't exist, a 204 is sent. I could probably be convinced to do a 404 in that case instead.
+/**
+ * DELETE /api/employees/:id route
+ * Deletes the requested employee and returns 204 No Content
+ * Even if the requested employee doesn't exist, a 204 is sent.
+ * I could probably be convinced to do a 404 in that case instead.
+ */
 router.delete('/:id', (req, res) => {
   const id = req.params.id;
   if (DATABASE.hasOwnProperty(id)){
