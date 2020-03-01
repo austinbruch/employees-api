@@ -8,7 +8,15 @@ const port = parseInt(process.env.PORT || '3000');
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Serve `static` folder as set of static content for client-side assets
+app.use(express.static('static'));
+
 app.use('/api/employees', employeeRoutes);
+
+// Send the Test UI HTML page for all requests to the root path
+app.get('/', (req, res) => {
+    res.sendFile('static/index.html');
+});
 
 // Fail over route
 app.use(function(req, res) {
