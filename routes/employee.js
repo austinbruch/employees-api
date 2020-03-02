@@ -62,6 +62,16 @@ const employeeFieldValidations = [
         put: true
       }
     }
+  },
+  {
+    fieldName: 'joke',
+    options: {
+      dataType: 'string',
+      required: {
+        post: false,
+        put: true
+      }
+    }
   }
 ];
 
@@ -105,11 +115,17 @@ router.post('', (req, res) => {
 
   // Assuming we got this far, we're all good on validations
   let newId = uuid();
+  const newEmployee = createDatabaseEntryFromReqBody(reqBody);
   externalApiUtils.getQuote()
   .then((quote) => {
+    newEmployee.quote = quote;
+    return externalApiUtils.getJoke();
+  })
+  .then((joke) => {
+    newEmployee.joke = joke;
     DATABASE[newId] = {
-      ...createDatabaseEntryFromReqBody(reqBody),
-      quote
+      ...newEmployee,
+      joke
     };
   })
   .finally(() => {
@@ -171,6 +187,9 @@ const createDatabaseEntryFromReqBody = (reqBody) => {
   };
   if (reqBody.quote) {
     result.quote = reqBody.quote;
+  }
+  if (reqBody.joke) {
+    result.joke = reqBody.joke;
   }
   return result;
 };
