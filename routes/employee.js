@@ -13,6 +13,36 @@ const DATABASE = {
   }
 };
 
+const employeeFieldValidations = [
+  {
+    fieldName: 'firstName',
+    options: {
+      dataType: 'string'
+    }
+  },
+  {
+    fieldName: 'lastName',
+    options: {
+      dataType: 'string'
+    }
+  },
+  {
+    fieldName: 'hireDate',
+    options: {
+      dataType: 'string',
+      custom: () => undefined // TODO - this is where we need to validate the date format, and that the date is in the past
+    }
+  },
+  {
+    fieldName: 'role',
+    options: {
+      dataType: 'string',
+      allowedValues: ['CEO', 'VP', 'MANAGER', 'LACKEY'],
+      custom: () => undefined // TODO - this is where we need to enforce uniqueness on the CEO role
+    }
+  }
+];
+
 /* GET employees listing. */
 router.get('', function(req, res) {
   // Map the database object to an array for the API response
@@ -43,58 +73,60 @@ router.get('/:id', (req, res) => {
  * POST new employee resource
  */
 router.post('', (req, res) => {
-  const newEmp = req.body;
+  const reqBody = req.body;
 
-  const fieldValidations = [
-    {
-      fieldName: 'firstName',
-      options: {
-        dataType: 'string'
-      }
-    },
-    {
-      fieldName: 'lastName',
-      options: {
-        dataType: 'string'
-      }
-    },
-    {
-      fieldName: 'hireDate',
-      options: {
-        dataType: 'string',
-        custom: () => undefined // TODO - this is where we need to validate the date format, and that the date is in the past
-      }
-    },
-    {
-      fieldName: 'role',
-      options: {
-        dataType: 'string',
-        allowedValues: ['CEO', 'VP', 'MANAGER', 'LACKEY'],
-        custom: () => undefined // TODO - this is where we need to enforce uniqueness on the CEO role
-      }
-    }
-  ];
-
-  for (let i = 0; i < fieldValidations.length; i++) {
-    const isInvalid = validateField(newEmp, fieldValidations[i].fieldName, fieldValidations[i].options);
-    if (isInvalid) {
-      res.status(400).send({
-        result: isInvalid
-      });
-      return;
-    }
+  // Validate the request payload
+  const isValid = validateEmployee(req, res);
+  if (!isValid) {
+    return;
   }
 
   // Assuming we got this far, we're all good on validations
   let newId = uuid();
   DATABASE[newId] = {
-    firstName: newEmp.firstName,
-    lastName: newEmp.lastName,
-    hireDate: newEmp.hireDate,
-    role: newEmp.role
+    firstName: reqBody.firstName,
+    lastName: reqBody.lastName,
+    hireDate: reqBody.hireDate,
+    role: reqBody.role
   };
   // TODO still need to add the 2 externally-populated fields
   res.sendStatus(201);
+});
+
+/**
+ * PUT /api/employeed/:id route
+ * Updates the resource at the specified ID with the request body
+ * 204 No Content is sent in the success case
+ * 404 Not Found is sent if the specified id doesn't exist
+ * 400 Bad Request is sent if the request body doesn't contain all required fields with valid values
+ */
+router.put('/:id', (req, res) => {
+  const id = req.params.id;
+  const reqBody = req.body;
+  
+  if (!DATABASE.hasOwnProperty(id)) {
+    res.status(404).send({
+      result: `A resource with id [${id}] does not exist, and therefore cannot be updated.`
+    });
+    return;
+  }
+  
+  // Validate the request payload
+  const isValid = validateEmployee(req, res);
+  if (!isValid) {
+    return;
+  }
+
+  // If we got this far, the request payload is valid, let's update the database.
+  DATABASE[id] = {
+    firstName: reqBody.firstName,
+    lastName: reqBody.lastName,
+    hireDate: reqBody.hireDate,
+    role: reqBody.role
+  };
+
+  // TODO still need to support the 2 externally-populated fields
+  res.sendStatus(204);
 });
 
 /**
@@ -110,6 +142,27 @@ router.delete('/:id', (req, res) => {
   }
   res.sendStatus(204);
 });
+
+/**
+ * Validates a request payload representing a new or updated employee resource.
+ * If the resource is invalid, the appropriate response is sent.
+ * @param {*} req - request
+ * @param {*} res - response
+ * @returns {boolean} true if the payload is valid, false otherwise.
+ */
+const validateEmployee = (req, res) => {
+  for (let i = 0; i < employeeFieldValidations.length; i++) {
+    const validation = employeeFieldValidations[i];
+    const isInvalid = validateField(req.body, validation.fieldName, validation.options);
+    if (isInvalid) {
+      res.status(400).send({
+        result: isInvalid
+      });
+      return false;
+    }
+  }
+  return true;
+}
 
 /**
  * Validates the specified field in the given object, with configurable options.
