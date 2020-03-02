@@ -3,6 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const uuid = require('uuid').v4;
+const moment = require('moment');
 
 const DATABASE = {
   [uuid()]: {
@@ -30,7 +31,16 @@ const employeeFieldValidations = [
     fieldName: 'hireDate',
     options: {
       dataType: 'string',
-      custom: () => undefined // TODO - this is where we need to validate the date format, and that the date is in the past
+      custom: (fieldName, value) => {
+        const format = 'YYYY-MM-DD';
+        const momentObj = moment(value, format, true);
+        if (!momentObj.isValid()) {
+          return `The value [${value}] for property [${fieldName}] is invalid. The required format is [${format}].`;
+        }
+        if (momentObj.isAfter(moment())) {
+          return `The value [${value}] for property [${fieldName}] is invalid, because it is in the future.`;
+        }
+      }
     }
   },
   {
