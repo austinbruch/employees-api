@@ -48,6 +48,7 @@ const employeeFieldValidations = [
     options: {
       dataType: 'string',
       allowedValues: ['CEO', 'VP', 'MANAGER', 'LACKEY'],
+      allowedValuesCaseSensitive: false,
       custom: () => undefined // TODO - this is where we need to enforce uniqueness on the CEO role
     }
   }
@@ -181,6 +182,7 @@ const validateEmployee = (req, res) => {
  * @param {*} options Object for customization of validation approach
  * `options.dataType` - specifies the required data type for the value of the given field.
  * `options.allowedValues` - specifies an array that represents an enum of values allowed for the given field.
+ * `options.allowedValuesCaseSensitive` - specifies whether the values in `options.allowedValues` are to be case sensitive. Only applicable to strings. Defaults to true if omitted.
  * `options.custom` - specifies a custom callback function to perform highly specific validation.
  * The callback function receives the `fieldName` and the value of the field. It should return
  * a string to be used as an error response, if the value is invalid, `undefined` otherwise.
@@ -200,7 +202,8 @@ const validateField = (obj, fieldName, options) => {
   }
 
   if (options.allowedValues) {
-    const allowedValues = validateFieldValueEnum(obj, fieldName, options.allowedValues);
+    const caseSensitive = options.hasOwnProperty('allowedValuesCaseSensitive') ? options.allowedValuesCaseSensitive : true;
+    const allowedValues = validateFieldValueEnum(obj, fieldName, options.allowedValues, caseSensitive);
     if (allowedValues) {
       return allowedValues;
     }
@@ -226,8 +229,26 @@ const validateFieldType = (obj, fieldName, dataType) => {
   }
 };
 
-const validateFieldValueEnum = (obj, fieldName, allowedValues) => {
-  if (allowedValues.indexOf(obj[fieldName]) === -1) {
+const validateFieldValueEnum = (obj, fieldName, allowedValues, caseSensitive) => {
+  let updatedAllowedValues = allowedValues;
+  let updatedFieldValue = obj[fieldName];
+
+  // If case insensitive matching, convert all strings to lowercase
+  if (!caseSensitive) {
+    updatedAllowedValues = allowedValues.map((allowedValue) => {
+      if (typeof allowedValue === 'string') {
+        return allowedValue.toLowerCase();
+      } else {
+        return allowedValue;
+      }
+    });
+
+    if (typeof updatedFieldValue === 'string') {
+      updatedFieldValue = updatedFieldValue.toLowerCase();
+    }
+  }
+
+  if (updatedAllowedValues.indexOf(updatedFieldValue) === -1) {
     return `The value of property [${fieldName}] is invalid. It should be one of ${allowedValues.join(', ')}.`;
   }
 };
