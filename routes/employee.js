@@ -48,7 +48,15 @@ const employeeFieldValidations = [
     options: {
       dataType: 'string',
       allowedValues: ['CEO', 'VP', 'MANAGER', 'LACKEY'],
-      custom: () => undefined // TODO - this is where we need to enforce uniqueness on the CEO role
+      allowedValuesCaseSensitive: false,
+      custom: (fieldName, value) => {
+        if (value.toLowerCase() === 'ceo') {
+          const ceoExists = Object.keys(DATABASE).find((id) => (DATABASE[id].role.toLowerCase() === 'ceo'));
+          if (ceoExists) {
+            return 'This employee cannot be created because there is already an employee with the [CEO] role and there can only be one.';
+          }
+        }
+      }
     }
   }
 ];
@@ -93,12 +101,8 @@ router.post('', (req, res) => {
 
   // Assuming we got this far, we're all good on validations
   let newId = uuid();
-  DATABASE[newId] = {
-    firstName: reqBody.firstName,
-    lastName: reqBody.lastName,
-    hireDate: reqBody.hireDate,
-    role: reqBody.role
-  };
+  DATABASE[newId] = createDatabaseEntryFromReqBody(reqBody);
+  
   // TODO still need to add the 2 externally-populated fields
   res.sendStatus(201);
 });
@@ -128,12 +132,7 @@ router.put('/:id', (req, res) => {
   }
 
   // If we got this far, the request payload is valid, let's update the database.
-  DATABASE[id] = {
-    firstName: reqBody.firstName,
-    lastName: reqBody.lastName,
-    hireDate: reqBody.hireDate,
-    role: reqBody.role
-  };
+  DATABASE[id] = createDatabaseEntryFromReqBody(reqBody);
 
   // TODO still need to support the 2 externally-populated fields
   res.sendStatus(204);
@@ -151,6 +150,13 @@ router.delete('/:id', (req, res) => {
     delete DATABASE[id];
   }
   res.sendStatus(204);
+});
+
+const createDatabaseEntryFromReqBody = (reqBody) => ({
+  firstName: reqBody.firstName,
+  lastName: reqBody.lastName,
+  hireDate: reqBody.hireDate,
+  role: reqBody.role.toUpperCase()
 });
 
 /**
@@ -181,6 +187,7 @@ const validateEmployee = (req, res) => {
  * @param {*} options Object for customization of validation approach
  * `options.dataType` - specifies the required data type for the value of the given field.
  * `options.allowedValues` - specifies an array that represents an enum of values allowed for the given field.
+ * `options.allowedValuesCaseSensitive` - specifies whether the values in `options.allowedValues` are to be case sensitive. Only applicable to strings. Defaults to true if omitted.
  * `options.custom` - specifies a custom callback function to perform highly specific validation.
  * The callback function receives the `fieldName` and the value of the field. It should return
  * a string to be used as an error response, if the value is invalid, `undefined` otherwise.
@@ -200,7 +207,8 @@ const validateField = (obj, fieldName, options) => {
   }
 
   if (options.allowedValues) {
-    const allowedValues = validateFieldValueEnum(obj, fieldName, options.allowedValues);
+    const caseSensitive = options.hasOwnProperty('allowedValuesCaseSensitive') ? options.allowedValuesCaseSensitive : true;
+    const allowedValues = validateFieldValueEnum(obj, fieldName, options.allowedValues, caseSensitive);
     if (allowedValues) {
       return allowedValues;
     }
@@ -226,8 +234,26 @@ const validateFieldType = (obj, fieldName, dataType) => {
   }
 };
 
-const validateFieldValueEnum = (obj, fieldName, allowedValues) => {
-  if (allowedValues.indexOf(obj[fieldName]) === -1) {
+const validateFieldValueEnum = (obj, fieldName, allowedValues, caseSensitive) => {
+  let updatedAllowedValues = allowedValues;
+  let updatedFieldValue = obj[fieldName];
+
+  // If case insensitive matching, convert all strings to lowercase
+  if (!caseSensitive) {
+    updatedAllowedValues = allowedValues.map((allowedValue) => {
+      if (typeof allowedValue === 'string') {
+        return allowedValue.toLowerCase();
+      } else {
+        return allowedValue;
+      }
+    });
+
+    if (typeof updatedFieldValue === 'string') {
+      updatedFieldValue = updatedFieldValue.toLowerCase();
+    }
+  }
+
+  if (updatedAllowedValues.indexOf(updatedFieldValue) === -1) {
     return `The value of property [${fieldName}] is invalid. It should be one of ${allowedValues.join(', ')}.`;
   }
 };
