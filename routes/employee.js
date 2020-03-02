@@ -49,7 +49,14 @@ const employeeFieldValidations = [
       dataType: 'string',
       allowedValues: ['CEO', 'VP', 'MANAGER', 'LACKEY'],
       allowedValuesCaseSensitive: false,
-      custom: () => undefined // TODO - this is where we need to enforce uniqueness on the CEO role
+      custom: (fieldName, value) => {
+        if (value.toLowerCase() === 'ceo') {
+          const ceoExists = Object.keys(DATABASE).find((id) => (DATABASE[id].role.toLowerCase() === 'ceo'));
+          if (ceoExists) {
+            return 'This employee cannot be created because there is already an employee with the [CEO] role and there can only be one.';
+          }
+        }
+      }
     }
   }
 ];
@@ -94,12 +101,8 @@ router.post('', (req, res) => {
 
   // Assuming we got this far, we're all good on validations
   let newId = uuid();
-  DATABASE[newId] = {
-    firstName: reqBody.firstName,
-    lastName: reqBody.lastName,
-    hireDate: reqBody.hireDate,
-    role: reqBody.role
-  };
+  DATABASE[newId] = createDatabaseEntryFromReqBody(reqBody);
+  
   // TODO still need to add the 2 externally-populated fields
   res.sendStatus(201);
 });
@@ -129,12 +132,7 @@ router.put('/:id', (req, res) => {
   }
 
   // If we got this far, the request payload is valid, let's update the database.
-  DATABASE[id] = {
-    firstName: reqBody.firstName,
-    lastName: reqBody.lastName,
-    hireDate: reqBody.hireDate,
-    role: reqBody.role
-  };
+  DATABASE[id] = createDatabaseEntryFromReqBody(reqBody);
 
   // TODO still need to support the 2 externally-populated fields
   res.sendStatus(204);
@@ -152,6 +150,13 @@ router.delete('/:id', (req, res) => {
     delete DATABASE[id];
   }
   res.sendStatus(204);
+});
+
+const createDatabaseEntryFromReqBody = (reqBody) => ({
+  firstName: reqBody.firstName,
+  lastName: reqBody.lastName,
+  hireDate: reqBody.hireDate,
+  role: reqBody.role.toUpperCase()
 });
 
 /**
