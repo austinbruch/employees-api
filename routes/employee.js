@@ -33,8 +33,8 @@ const employeeFieldValidations = [
       dataType: 'string',
       custom: (fieldName, value) => {
         const format = 'YYYY-MM-DD';
-        const momentObj = moment(value, format);
-        if (!momentObj.isValid) {
+        const momentObj = moment(value, format, true);
+        if (!momentObj.isValid()) {
           return `The value [${value}] for property [${fieldName}] is invalid. The required format is [${format}].`;
         }
         if (momentObj.isAfter(moment())) {
