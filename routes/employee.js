@@ -1,18 +1,12 @@
 'use strict';
 
 const express = require('express');
-const router = express.Router();
-const uuid = require('uuid').v4;
 const moment = require('moment');
+const uuid = require('uuid').v4;
+const router = express.Router();
+const externalApiUtils = require('../utils/externalApiUtils');
 
-const DATABASE = {
-  [uuid()]: {
-    firstName: 'asf',
-    lastName: 'asdf',
-    hireDate: '2020-02-29',
-    role: 'CEO'
-  }
-};
+const DATABASE = {};
 
 const employeeFieldValidations = [
   {
@@ -58,6 +52,16 @@ const employeeFieldValidations = [
         }
       }
     }
+  },
+  {
+    fieldName: 'quote',
+    options: {
+      dataType: 'string',
+      required: {
+        post: false,
+        put: true
+      }
+    }
   }
 ];
 
@@ -101,10 +105,16 @@ router.post('', (req, res) => {
 
   // Assuming we got this far, we're all good on validations
   let newId = uuid();
-  DATABASE[newId] = createDatabaseEntryFromReqBody(reqBody);
-  
-  // TODO still need to add the 2 externally-populated fields
-  res.sendStatus(201);
+  externalApiUtils.getQuote()
+  .then((quote) => {
+    DATABASE[newId] = {
+      ...createDatabaseEntryFromReqBody(reqBody),
+      quote
+    };
+  })
+  .finally(() => {
+    res.sendStatus(201);
+  });
 });
 
 /**
@@ -152,12 +162,18 @@ router.delete('/:id', (req, res) => {
   res.sendStatus(204);
 });
 
-const createDatabaseEntryFromReqBody = (reqBody) => ({
-  firstName: reqBody.firstName,
-  lastName: reqBody.lastName,
-  hireDate: reqBody.hireDate,
-  role: reqBody.role.toUpperCase()
-});
+const createDatabaseEntryFromReqBody = (reqBody) => {
+  const result = {
+    firstName: reqBody.firstName,
+    lastName: reqBody.lastName,
+    hireDate: reqBody.hireDate,
+    role: reqBody.role.toUpperCase()
+  };
+  if (reqBody.quote) {
+    result.quote = reqBody.quote;
+  }
+  return result;
+};
 
 /**
  * Validates a request payload representing a new or updated employee resource.
@@ -169,7 +185,10 @@ const createDatabaseEntryFromReqBody = (reqBody) => ({
 const validateEmployee = (req, res) => {
   for (let i = 0; i < employeeFieldValidations.length; i++) {
     const validation = employeeFieldValidations[i];
-    const isInvalid = validateField(req.body, validation.fieldName, validation.options);
+    const isInvalid = validateField(req.body, validation.fieldName, {
+      ...validation.options,
+      reqMethod: req.method
+    });
     if (isInvalid) {
       res.status(400).send({
         result: isInvalid
@@ -189,14 +208,29 @@ const validateEmployee = (req, res) => {
  * `options.allowedValues` - specifies an array that represents an enum of values allowed for the given field.
  * `options.allowedValuesCaseSensitive` - specifies whether the values in `options.allowedValues` are to be case sensitive. Only applicable to strings. Defaults to true if omitted.
  * `options.custom` - specifies a custom callback function to perform highly specific validation.
+ * `options.reqMethod` - specifes the HTTP request method used in the current flow
+ * `options.required` - object that defined whether the field is required for a given HTTP method. All are true if omitted.
+ * `options.required.post` - boolean that specifies whether the field is required for a HTTP POST request. True if omitted
+ * `options.required.put` - boolean that specifies whether the field is required for a HTTP PUT request. True if omitted
  * The callback function receives the `fieldName` and the value of the field. It should return
  * a string to be used as an error response, if the value is invalid, `undefined` otherwise.
  * @returns string | undefined - string if the object is invalid (the return value is an error message), undefined otherwise.
  */
 const validateField = (obj, fieldName, options) => {
+  let isRequired = true;
+  if (options.required && options.reqMethod) {
+    if (options.required.hasOwnProperty(options.reqMethod.toLowerCase())) {
+      isRequired = options.required[options.reqMethod.toLowerCase()];
+    }
+  }
+
   const existence = validateFieldExistence(obj, fieldName);
-  if (existence) {
+  if (isRequired && existence) {
+    // If the field is required and it's missing, return the error.
     return existence;
+  } else if (!isRequired && existence) {
+    // If it's not required and it's not present, return immediately to skip all further validation.
+    return;
   }
 
   if (options.dataType) {
